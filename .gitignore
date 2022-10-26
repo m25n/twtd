@@ -1,3 +1,5 @@
-.idea/
-public/
-db/
+/.idea/
+/public/
+/db/
+/build
+/author

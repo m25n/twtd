@@ -12,7 +12,13 @@ import (
 	"runtime"
 )
 
+var (
+	version   = "0.0.0"
+	gitCommit = "unknown"
+)
+
 func main() {
+	log.Printf("running twtd/%s (%s)", version, gitCommit)
 	addr := flag.String("http", ":8080", "address and port to bind to")
 	basedir := flag.String("dir", ".", "directory where the twtxt.txt file is located")
 	flag.Parse()
