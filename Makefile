@@ -6,7 +6,7 @@ clean:
 	rm -rf $(BUILD_DIR)
 
 ##    TWTD    ##
-TWTD_VERSION	?=	0.0.1+$(shell cat $(AUTHOR_FILE))-$(shell date +"%Y%m%d")
+TWTD_VERSION	?=	$(shell cat VERSION)+$(shell cat $(AUTHOR_FILE))-$(shell date +"%Y%m%d")
 TWTD_FLAGS		?=	-d public
 TWTD_USR		?=	user
 TWTD_PWD		?=	Password1!
