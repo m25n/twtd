@@ -5,14 +5,13 @@ import (
 	"io"
 	"log"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
 )
 
 type DB interface {
 	Get() (io.ReadCloser, error)
-	Patch(io.Reader) error
+	PostStatus(io.Reader) error
 	LogFollower(string) error
 }
 
@@ -75,13 +74,17 @@ func (f *FileDB) Get() (io.ReadCloser, error) {
 	return &unlockableReader{bytes.NewBuffer(f.twtxtCache), &f.twtxtMu}, nil
 }
 
-func (f *FileDB) Patch(patch io.Reader) error {
+func (f *FileDB) PostStatus(statusLine io.Reader) error {
 	f.twtxtMu.Lock()
 	defer f.twtxtMu.Unlock()
 	f.twtxtCache = f.twtxtCache[:0]
-	cmd := exec.Command("patch", "-u", f.twtxtFilepath)
-	cmd.Stdin = patch
-	return cmd.Run()
+	fh, err := os.OpenFile(f.twtxtFilepath, os.O_APPEND, 0666)
+	if err != nil {
+		return err
+	}
+	_, err = io.Copy(fh, statusLine)
+	_ = fh.Close()
+	return err
 }
 
 type runlocker interface {

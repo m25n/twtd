@@ -13,16 +13,16 @@ import (
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
 func Handler(db DB, auth Middleware, enqueueTask task.EnqueueFunc) http.Handler {
-	getTwtxt := handleGetTwtxt(db, enqueueTask)
-	patchTwtxt := auth(handlePatchTwtxt(db))
+	get := getHandler(db, enqueueTask)
+	patch := auth(patchHandler(db))
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch {
 		case req.URL.Path == "/twtxt.txt":
 			switch req.Method {
 			case http.MethodGet:
-				getTwtxt(res, req)
+				get(res, req)
 			case http.MethodPatch:
-				patchTwtxt(res, req)
+				patch(res, req)
 			default:
 				http.Error(res, "Method not allowed", http.StatusMethodNotAllowed)
 			}
@@ -32,8 +32,9 @@ func Handler(db DB, auth Middleware, enqueueTask task.EnqueueFunc) http.Handler 
 	})
 }
 
-func handleGetTwtxt(db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
+func getHandler(db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
+		res.Header().Set("Content-Type", "text/vnd.twtxt+plain")
 		res.WriteHeader(http.StatusOK)
 		file, err := db.Get()
 		if err != nil {
@@ -63,7 +64,7 @@ func handleGetTwtxt(db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
 	}
 }
 
-func handlePatchTwtxt(db DB) http.HandlerFunc {
+func patchHandler(db DB) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		mediaType, _, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
 		if err != nil {
@@ -71,16 +72,16 @@ func handlePatchTwtxt(db DB) http.HandlerFunc {
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if mediaType != "text/x-diff" {
+		if mediaType != "text/vnd.twtxt+plain" && mediaType != "text/vnd.twtxt" {
 			res.WriteHeader(http.StatusUnsupportedMediaType)
 			return
 		}
-		err = db.Patch(req.Body)
+		err = db.PostStatus(req.Body)
 		if err != nil {
 			log.Println(err.Error())
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
-		res.WriteHeader(http.StatusOK)
+		res.WriteHeader(http.StatusNoContent)
 	}
 }

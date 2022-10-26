@@ -7,14 +7,14 @@ clean:
 
 ##    TWTD    ##
 TWTD_VERSION	?=	$(shell cat VERSION)+$(shell cat $(AUTHOR_FILE))-$(shell date +"%Y%m%d")
-TWTD_FLAGS		?=	-d public
+TWTD_FLAGS		?=	-dir public
 TWTD_USR		?=	user
 TWTD_PWD		?=	Password1!
 TWTD_GO_FILES  	:=	$(shell go list -f '{{ $$dir := .Dir }}{{ range .GoFiles }}{{ printf "%s/%s " $$dir . }}{{ end }}' -deps ./cmd/twtd/... | grep $$(pwd))
 
 .PHONY: run/twtd
 run/twtd:
-	go run ./cmd/twtd/... $(TWTD_FLAGS)
+	TWTD_USR=$(TWTD_USR) TWTD_PWD=$(TWTD_PWD) go run ./cmd/twtd/... $(TWTD_FLAGS)
 
 .PHONY: build/twtd
 build/twtd: $(BUILD_DIR)/$(shell go env GOOS)/$(shell go env GOARCH)/twtd
