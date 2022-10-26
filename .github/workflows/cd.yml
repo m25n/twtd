@@ -26,4 +26,4 @@ jobs:
         go-version: 1.19
 
     - name: Build & Publish Image
-      run: TWTD_VERSION=$(script/snapshot-version) make container/twtd
+      run: TWTD_VERSION=$(script/snapshot-version) make -j container/twtd
