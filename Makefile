@@ -5,6 +5,11 @@ AUTHOR_FILE	?=	author
 clean:
 	rm -rf $(BUILD_DIR)
 
+.PHONY: test
+test:
+	go test -race ./...
+
+
 ##    TWTD    ##
 TWTD_VERSION	?=	$(shell cat VERSION)+$(shell cat $(AUTHOR_FILE))-$(shell date +"%Y%m%d")
 TWTD_FLAGS		?=	-dir public
