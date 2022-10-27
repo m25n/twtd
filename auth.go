@@ -18,6 +18,12 @@ func BasicAuth(validUsername string, validPassword string) Middleware {
 	}
 }
 
+func NoAuth() Middleware {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return next
+	}
+}
+
 func verify(validUsername, username, validPassword, password string) bool {
 	usernameMatches := subtle.ConstantTimeCompare([]byte(validUsername), []byte(username)) == 1
 	passwordMatches := subtle.ConstantTimeCompare([]byte(validPassword), []byte(password)) == 1

@@ -4,17 +4,23 @@ import (
 	"context"
 	"github.com/m25n/twt/task"
 	"io"
-	"log"
 	"mime"
 	"net/http"
 	"time"
 )
 
+type Logger interface {
+	WritingBodyErr(err error)
+	FollowerLoggingErr(err error)
+	PostingStatusErr(err error)
+	GettingTwtxtErr(err error)
+}
+
 type Middleware func(http.HandlerFunc) http.HandlerFunc
 
-func Handler(db DB, auth Middleware, enqueueTask task.EnqueueFunc) http.Handler {
-	get := getHandler(db, enqueueTask)
-	patch := auth(patchHandler(db))
+func Handler(logger Logger, db DB, auth Middleware, enqueueTask task.EnqueueFunc) http.Handler {
+	get := getHandler(logger, db, enqueueTask)
+	patch := auth(patchHandler(logger, db))
 	return http.HandlerFunc(func(res http.ResponseWriter, req *http.Request) {
 		switch {
 		case req.URL.Path == "/twtxt.txt":
@@ -32,20 +38,19 @@ func Handler(db DB, auth Middleware, enqueueTask task.EnqueueFunc) http.Handler 
 	})
 }
 
-func getHandler(db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
+func getHandler(logger Logger, db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "text/vnd.twtxt+plain")
-		res.WriteHeader(http.StatusOK)
 		file, err := db.Get()
 		if err != nil {
-			log.Print(err.Error())
+			logger.GettingTwtxtErr(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		_, err = io.Copy(res, file)
 		_ = file.Close()
 		if err != nil {
-			log.Print(err.Error())
+			logger.WritingBodyErr(err)
 			return
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -54,21 +59,20 @@ func getHandler(db DB, enqueueTask task.EnqueueFunc) http.HandlerFunc {
 			userAgent := req.Header.Get("User-Agent")
 			if FollowerUserAgent(userAgent) {
 				if err := db.LogFollower(userAgent); err != nil {
-					log.Println("error logging follower:", err.Error())
+					logger.FollowerLoggingErr(err)
 				}
 			}
 		})
 		if err != nil {
-			log.Printf("error logging follower: %s", err.Error())
+			logger.FollowerLoggingErr(err)
 		}
 	}
 }
 
-func patchHandler(db DB) http.HandlerFunc {
+func patchHandler(logger Logger, db DB) http.HandlerFunc {
 	return func(res http.ResponseWriter, req *http.Request) {
 		mediaType, _, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
 		if err != nil {
-			log.Println(err.Error())
 			res.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -78,7 +82,7 @@ func patchHandler(db DB) http.HandlerFunc {
 		}
 		err = db.PostStatus(req.Body)
 		if err != nil {
-			log.Println(err.Error())
+			logger.PostingStatusErr(err)
 			res.WriteHeader(http.StatusInternalServerError)
 			return
 		}
