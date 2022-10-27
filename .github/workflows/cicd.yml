@@ -8,22 +8,20 @@ on:
 
 jobs:
 
-  publish:
+  build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+    - name: Set up Go
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.19
+    - name: Test
+      run: make -j test
     - name: Login to DockerHub
       uses: docker/login-action@v2
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-
-    - name: Test
-      run: make -j test
-
     - name: Publish
       run: TWTD_VERSION=$(script/snapshot-version) make -j container/twtd
