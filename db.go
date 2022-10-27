@@ -52,26 +52,31 @@ func (f *FileDB) Get() (io.ReadCloser, error) {
 	f.twtxtMu.RLock()
 	if len(f.twtxtCache) == 0 {
 		f.twtxtMu.RUnlock()
-		f.twtxtMu.Lock()
-		if len(f.twtxtCache) == 0 {
-			fh, err := os.Open(f.twtxtFilepath)
-			if err != nil {
-				f.twtxtMu.Unlock()
-				return nil, err
-			}
-			buf := bytes.NewBuffer(f.twtxtCache)
-			_, err = io.Copy(buf, fh)
-			_ = fh.Close()
-			if err != nil {
-				f.twtxtMu.Unlock()
-				return nil, err
-			}
-			f.twtxtCache = buf.Bytes()
+		if err := f.loadCache(); err != nil {
+			return nil, err
 		}
-		f.twtxtMu.Unlock()
 		f.twtxtMu.RLock()
 	}
 	return &unlockableReader{bytes.NewBuffer(f.twtxtCache), &f.twtxtMu}, nil
+}
+
+func (f *FileDB) loadCache() error {
+	f.twtxtMu.Lock()
+	defer f.twtxtMu.Unlock()
+	if len(f.twtxtCache) == 0 {
+		fh, err := os.Open(f.twtxtFilepath)
+		if err != nil {
+			return err
+		}
+		buf := bytes.NewBuffer(f.twtxtCache)
+		_, err = io.Copy(buf, fh)
+		_ = fh.Close()
+		if err != nil {
+			return err
+		}
+		f.twtxtCache = buf.Bytes()
+	}
+	return nil
 }
 
 func (f *FileDB) PostStatus(statusLine io.Reader) error {
